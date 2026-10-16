@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 from streamlit.testing.v1 import AppTest
 
-import app
+import streamlit_app as app
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
@@ -42,7 +42,7 @@ class DashboardSmokeTests(unittest.TestCase):
             "Model Comparison",
             "Dataset Explorer",
         ]
-        test_app = AppTest.from_file(str(PROJECT_DIR / "app.py"))
+        test_app = AppTest.from_file(str(PROJECT_DIR / "streamlit_app.py"))
         test_app.run(timeout=120)
         for page in pages:
             test_app.radio[0].set_value(page)

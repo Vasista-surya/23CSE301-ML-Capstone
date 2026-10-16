@@ -1,7 +1,7 @@
 """Reusable visual components for the Machine Learning Capstone dashboard.
 
 The dashboard deliberately keeps data access and model-service orchestration in
-``app.py``.  This module contains presentation helpers only so the visual
+``streamlit_app.py``. This module contains presentation helpers only so the visual
 language stays consistent across the six dashboard workspaces.
 """
 
