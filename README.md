@@ -29,6 +29,22 @@ launch commands on the same interpreter. The app resolves `datasets/` and
 `notebooks/` relative to `app.py`, so it is safe to launch from another
 working directory as well.
 
+## Deploy on Render
+
+This repository includes `render.yaml` for a Render web service. In Render,
+choose **New → Blueprint**, connect this repository, and select the `main`
+branch. Render will install `requirements.txt`, start Streamlit on Render's
+`$PORT`, and use `/_stcore/health` for the health check.
+
+The free plan may sleep when idle, so the first request after inactivity can
+take longer. The tested model bundles are committed under `models/` and are
+validated by content fingerprint and scikit-learn version before use.
+
+Vercel is not a direct deployment target for this Streamlit application. A
+Vercel deployment would require rewriting the UI as a Next.js frontend and
+hosting the Python ML service separately; Render keeps the current dashboard
+stack unchanged.
+
 ## Service integration
 
 The UI detects these functions from `ml_services.py` when present:

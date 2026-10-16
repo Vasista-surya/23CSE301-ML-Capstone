@@ -1,11 +1,18 @@
 # Generated model artifacts
 
-`model_utils.py` generates the three `*.joblib` bundles lazily from the
-unchanged source CSV files.  Generated artifacts are intentionally ignored by
-Git because they are version- and environment-specific.  This directory is
-kept in the project so the dashboard has a predictable local cache location.
+The three `*.joblib` bundles are deployment assets for the tested Python and
+scikit-learn runtime. They are validated against the installed scikit-learn
+version and a content fingerprint of the source CSV before loading. The
+content-based fingerprint is stable across Git checkouts, so a hosted service
+does not retrain the large FIFA SVR model just because file timestamps changed.
 
-The artifact stores the fitted estimator(s), feature order, train-only
-imputation medians, IQR caps, scalers, class order, and computed result tables.
-If the installed scikit-learn version differs from the version recorded in an
-artifact, the service discards that cache and retrains reproducibly.
+Regenerate them from the project root after changing source data, model code,
+or dependency versions:
+
+```powershell
+python generate_model_artifacts.py
+```
+
+If a bundle is missing or incompatible, the dashboard still renders the
+persisted evidence tables, but live prediction services may need to train a
+replacement bundle on first use.

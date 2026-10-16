@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import lru_cache
+from hashlib import sha256
 import os
 from pathlib import Path
 import tempfile
@@ -256,7 +257,13 @@ def _source_fingerprint(kind: str) -> str:
     for filename in source_files:
         path = _data_path(filename)
         stat = path.stat()
-        parts.append(f"{filename}:{stat.st_size}:{stat.st_mtime_ns}")
+        digest = sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        # Content-based fingerprints survive Git checkout timestamp changes
+        # while still invalidating a bundle when its source data changes.
+        parts.append(f"{filename}:{stat.st_size}:{digest.hexdigest()}")
     return "|".join(parts)
 
 
