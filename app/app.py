@@ -1,117 +1,96 @@
-            with st.expander("Full cluster profile table", expanded=False):
-                st.dataframe(profiles, hide_index=True, use_container_width=True)
-                st.download_button("Download profiles CSV", profiles.to_csv(index=False).encode("utf-8"),
-                                   "clustering_cluster_profiles.csv", "text/csv")
+from __future__ import annotations
 
-    if mall is not None:
-        st.markdown("### Customer behaviour explorer")
-        numeric = numeric_columns(mall, exclude={"CustomerID"})
-        if len(numeric) >= 2:
-            x_default = numeric.index("Annual Income (k$)") if "Annual Income (k$)" in numeric else 0
-            y_default = numeric.index("Spending Score (1-100)") if "Spending Score (1-100)" in numeric else min(1, len(numeric) - 1)
-            left, right = st.columns(2)
-            x = left.selectbox("Horizontal axis", numeric, index=x_default, key="customer_x")
-            y = right.selectbox("Vertical axis", numeric, index=y_default, key="customer_y")
-            fig = px.scatter(
-                mall, x=x, y=y,
-                color="Gender" if "Gender" in mall.columns else None,
-                hover_data=[c for c in ["Age", "Annual Income (k$)", "Spending Score (1-100)"] if c in mall.columns],
-                opacity=0.8,
-            )
-            st.plotly_chart(chart_theme(fig, "Customer feature map"), use_container_width=True)
-        if "Gender" in mall.columns:
-            counts = mall["Gender"].value_counts().rename_axis("Gender").reset_index(name="Customers")
-            fig = px.bar(counts, x="Gender", y="Customers", color="Gender", text="Customers")
-            st.plotly_chart(chart_theme(fig, "Customer records by gender"), use_container_width=True)
+from pathlib import Path
+import warnings
+
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import streamlit as st
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+# -----------------------------------------------------------------------------
+# Configuration and theme
+# -----------------------------------------------------------------------------
+st.set_page_config(
+    page_title="ML Capstone | Analytics Studio",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = ROOT / "datasets"
+
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+    html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
+    .stApp { background: #0b1020; color: #f2f5fb; }
+    [data-testid="stHeader"] { background: rgba(11,16,32,.88); }
+    [data-testid="stSidebar"] { background: #10172a; border-right: 1px solid #24304a; }
+    [data-testid="stSidebar"] * { color: #e7edf8; }
+    h1, h2, h3 { font-family: 'Manrope', sans-serif !important; letter-spacing: -0.035em; }
+    h1 { font-weight: 800 !important; }
+    .hero { padding: 1.6rem 1.8rem; border-radius: 22px;
+        background: linear-gradient(120deg, #16213d 0%, #142b3d 52%, #18384a 100%);
+        border: 1px solid #2c4865; margin-bottom: 1.25rem; }
+    .eyebrow { color: #79e2d0; font-size: .75rem; text-transform: uppercase;
+        letter-spacing: .18em; font-weight: 800; }
+    .hero-sub { color: #bdcce0; font-size: 1rem; line-height: 1.65; max-width: 940px; }
+    div[data-testid="stMetric"] { background: #121b30; border: 1px solid #273652;
+        border-radius: 16px; padding: 15px 17px; }
+    div[data-testid="stMetricLabel"] { color: #a8b8d1; }
+    div[data-testid="stMetricValue"] { color: #f2f6ff; font-family: 'Manrope',sans-serif; }
+    div[data-testid="stPlotlyChart"] { background: #10182b; border: 1px solid #202d47;
+        border-radius: 15px; padding: 8px; }
+    .pill { display:inline-block; padding:4px 9px; border-radius:30px; margin:2px 4px 2px 0;
+        color:#9cf0df; background:#12352f; border:1px solid #256358; font-size:.76rem; }
+    .footer { color:#8292ac; font-size:.78rem; border-top:1px solid #26334c;
+        padding-top:1rem; margin-top:2rem; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 # -----------------------------------------------------------------------------
-# Regression dashboard
+# Shared helpers
 # -----------------------------------------------------------------------------
-def show_regression() -> None:
-    st.markdown("## FIFA Player-Performance Regression")
-    st.caption("Explore FIFA player attributes, distributions, and relationships from the project dataset.")
-    fifa = optional_csv("fifa_preprocessed.csv")
-    if fifa is None:
-        fifa = optional_csv("fifa.csv")
-    if fifa is None:
-        missing_dataset_message("fifa.csv or fifa_preprocessed.csv")
-        return
-
-    metric_cards([
-        ("Player records", f"{len(fifa):,}", None),
-        ("Columns", str(fifa.shape[1]), None),
-        ("Missing cells", f"{fifa.isna().sum().sum():,}", None),
-        ("Duplicate rows", f"{fifa.duplicated().sum():,}", None),
-    ])
-    numeric = numeric_columns(fifa)
-    if len(numeric) < 2:
-        st.info("Not enough numeric columns were detected for exploration.")
-        return
-
-    st.markdown("### Explore player attributes")
-    col1, col2, col3 = st.columns(3)
-    x = col1.selectbox("X-axis", numeric, index=0, key="fifa_x")
-    y = col2.selectbox("Y-axis", numeric, index=min(1, len(numeric) - 1), key="fifa_y")
-    upper = max(500, min(10000, len(fifa)))
-    default_sample = min(3000, upper)
-    sample_size = col3.slider("Rows to plot", min_value=500, max_value=upper, value=default_sample, step=500)
-    plot_data = fifa[[x, y]].dropna()
-    if len(plot_data) > sample_size:
-        plot_data = plot_data.sample(sample_size, random_state=42)
-    fig = px.scatter(plot_data, x=x, y=y, opacity=0.62)
-    st.plotly_chart(chart_theme(fig, "Player attribute relationship"), use_container_width=True)
-
-    candidates = [col for col in numeric if any(term in col.lower() for term in ["overall", "potential", "value", "wage", "rating"])]
-    distribution_default = candidates[0] if candidates else numeric[-1]
-    distribution_col = st.selectbox("Feature distribution", numeric, index=numeric.index(distribution_default), key="fifa_distribution")
-    fig = px.histogram(fifa, x=distribution_col, nbins=40, marginal="box")
-    st.plotly_chart(chart_theme(fig, f"Distribution · {distribution_col}"), use_container_width=True)
-
-    with st.expander("Numeric correlation matrix", expanded=False):
-        corr_cols = numeric[:20]
-        corr = fifa[corr_cols].corr(numeric_only=True)
-        fig = px.imshow(corr, text_auto=".2f", color_continuous_scale="RdBu_r", zmin=-1, zmax=1, aspect="auto")
-        st.plotly_chart(chart_theme(fig, "Correlation matrix · first 20 numeric features"), use_container_width=True)
-
-    st.info("This page currently focuses on exploratory analysis. Regression model scores are not fabricated; export the evaluation table from the regression notebook to a CSV to add a results leaderboard.")
+def find_dataset(filename: str) -> Path | None:
+    """Locate a CSV in the expected repo layout or common launch directories."""
+    candidates = [
+        DATA_DIR / filename,
+        ROOT / filename,
+        Path.cwd() / "datasets" / filename,
+        Path.cwd() / filename,
+    ]
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_file():
+            return candidate
+    return None
 
 
-# -----------------------------------------------------------------------------
-# Navigation
-# -----------------------------------------------------------------------------
-def main() -> None:
-    with st.sidebar:
-        st.markdown("## ML Capstone")
-        st.caption("Analytics Studio · Review dashboard")
-        page = st.radio("Navigation", ["Overview", "Dataset Explorer", "Classification", "Clustering", "Regression"])
-        st.markdown("---")
-        st.markdown("**Project tracks**")
-        st.markdown(
-            '<span class="pill">Regression</span><span class="pill">Classification</span><span class="pill">Clustering</span>',
-            unsafe_allow_html=True,
-        )
-        st.markdown("---")
-        st.caption("Source: repository datasets and saved evaluation CSVs.")
-        st.caption("Charts are interactive. Use the Plotly toolbar to zoom, pan, or download figures.")
-
-    if page == "Overview":
-        show_overview()
-    elif page == "Dataset Explorer":
-        show_dataset_explorer()
-    elif page == "Classification":
-        show_classification()
-    elif page == "Clustering":
-        show_clustering()
-    else:
-        show_regression()
-
-    st.markdown(
-        '<div class="footer">ML Capstone Analytics Studio · Saved metrics come from repository CSVs. '
-        'Interpret all charts alongside the underlying project notebooks.</div>',
-        unsafe_allow_html=True,
-    )
+@st.cache_data(show_spinner=False)
+def read_csv(path_string: str) -> pd.DataFrame:
+    return pd.read_csv(path_string, low_memory=False)
 
 
-if __name__ == "__main__":
-    main()
+def optional_csv(filename: str) -> pd.DataFrame | None:
+    path = find_dataset(filename)
+    if path is None:
+        return None
+    try:
+        return read_csv(str(path))
+    except Exception as exc:
+        st.warning(f"Couldn't load `{filename}`: {exc}")
+        return None
+
+
+def numeric_columns(frame: pd.DataFrame, exclude: set[str] | None = None) -> list[str]:
+    excluded = exclude or set()
+    return [
+        col for col in frame.select_dtypes(include=np.number).columns
