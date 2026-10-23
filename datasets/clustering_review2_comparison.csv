@@ -1,3 +1,5 @@
-Algorithm,Silhouette Score,Davies-Bouldin Index,Calinski-Harabasz Index
-K-Means,0.4284,0.8254,135.1021
-Agglomerative Hierarchical (Ward),0.4201,0.8521,127.9865
+Algorithm,Number of clusters,Silhouette Score,Davies-Bouldin Index,Calinski-Harabasz Index
+K-Means,6,0.4284167762892593,0.8253539040983219,135.10210365783408
+Agglomerative (Ward linkage),6,0.4201169558789579,0.8521020845733146,127.98645433956887
+Agglomerative (Average linkage),6,0.38957308601543233,0.8646021346720328,102.03702529233978
+Agglomerative (Complete linkage),6,0.37456111132591957,1.0004924898802199,109.4153502193853
