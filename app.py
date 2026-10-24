@@ -21,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "datasets"
 
 st.markdown(
@@ -85,7 +85,7 @@ def optional_csv(filename: str) -> pd.DataFrame | None:
         return None
     try:
         return read_csv(str(path))
-    except Exception as exc:
+    except (OSError, UnicodeDecodeError, pd.errors.EmptyDataError, pd.errors.ParserError) as exc:
         st.warning(f"Couldn't load `{filename}`: {exc}")
         return None
 
@@ -122,7 +122,7 @@ def chart_theme(fig, title: str | None = None):
 
 def missing_dataset_message(filename: str) -> None:
     st.warning(f"Couldn't find `{filename}`.")
-    st.caption("Expected layout: repository-root / datasets / filename.csv. Keep the `app` folder beside `datasets`.")
+    st.caption("Expected layout: keep the `datasets` folder next to `app.py` in the repository.")
 
 
 # -----------------------------------------------------------------------------
